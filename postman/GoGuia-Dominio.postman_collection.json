@@ -1,0 +1,809 @@
+{
+  "info": {
+    "name": "GoGuia Domínio",
+    "description": "Rotas do domínio para o frontend. Auth não muda.\n\nBase URL: http://localhost:3001\nHeader: Authorization: Bearer <jwt>\nCORS: http://localhost:8080\n\nRode primeiro Sessão / Login turista e Sessão / Login guia. Eles gravam tokenTurista e tokenGuia.\n\n401 = token inválido ou expirado (o FE limpa a sessão e vai para /login).\n403 = papel errado ou usuário fora da reserva. /turista/* exige TURISTA. /guia/* exige GUIA.\nPUT /usuario/senha com senha atual errada responde 400 SENHA_ATUAL_INVALIDA e não encerra a sessão.\n\nErro: { \"message\": \"...\", \"code\": \"OPCIONAL\", \"errors\": { \"campo\": \"...\" } }\n\nDinheiro em reais (number). Data YYYY-MM-DD. Horário HH:mm. Instant ISO-8601.\n\nSenha de todos os seeds: Senha@123\n- turista@goguia.test (TURISTA)\n- guia@goguia.test (GUIA, Pedro Marcos França, dono do Bike Tour)\n- carlos.lima@goguia.test, mariana.reis@goguia.test, fernanda.souza@goguia.test, ricardo.silveira@goguia.test, antonio.bezerra@goguia.test\n\nRoteiros (IDs fixos):\n- a1000000-0000-4000-8000-000000000001 Bike Tour do Eixo Monumental (destaque, 2 avaliações, guia@)\n- a1000000-0000-4000-8000-000000000002 Um Dia no Rio (destaque)\n- a1000000-0000-4000-8000-000000000003 Angra dos Reis e Ilha Grande\n- a1000000-0000-4000-8000-000000000004 Avenida Paulista\n- a1000000-0000-4000-8000-000000000005 Centro Hípico Lago Sul\n- a1000000-0000-4000-8000-000000000006 Fazenda Azul\n\nReservas já criadas do turista no Bike Tour (pagamento PAGO):\n- b1000000-0000-4000-8000-000000000001 CONCLUIDA\n- b1000000-0000-4000-8000-000000000002 CONFIRMADA (hoje + 14 dias)\n- b1000000-0000-4000-8000-000000000003 PENDENTE (hoje + 21 dias) — o guia pode aceitar ou recusar\n\nPIX simulado: crie uma reserva nova, pague com PIX e consulte de novo depois de ~5s (PIX_SIMULADO_PAGO_EM_SEGUNDOS). O status do pagamento vai para PAGO e o da reserva para PENDENTE. Cartão responde 501.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:3001" },
+    { "key": "tokenTurista", "value": "" },
+    { "key": "tokenGuia", "value": "" },
+    { "key": "tokenAdmin", "value": "" },
+    { "key": "guiaId", "value": "" },
+    { "key": "roteiroId", "value": "a1000000-0000-4000-8000-000000000001" },
+    { "key": "reservaConcluida", "value": "b1000000-0000-4000-8000-000000000001" },
+    { "key": "reservaConfirmada", "value": "b1000000-0000-4000-8000-000000000002" },
+    { "key": "reservaPendente", "value": "b1000000-0000-4000-8000-000000000003" },
+    { "key": "reservaId", "value": "" },
+    { "key": "conversaId", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "Sessão",
+      "description": "Login só para obter o Bearer. O contrato de auth continua o da coleção GoGuia Auth.",
+      "item": [
+        {
+          "name": "Login turista",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "if (body.token) pm.collectionVariables.set('tokenTurista', body.token);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/auth/login",
+            "description": "200 { token, expiresIn, user }. Grava tokenTurista.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"turista@goguia.test\",\n  \"senha\": \"Senha@123\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Login guia",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "if (body.token) pm.collectionVariables.set('tokenGuia', body.token);",
+                  "if (body.user && body.user.id) pm.collectionVariables.set('guiaId', body.user.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/auth/login",
+            "description": "Pedro Marcos França, dono do Bike Tour. Grava tokenGuia.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"guia@goguia.test\",\n  \"senha\": \"Senha@123\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Login admin",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "if (body.token) pm.collectionVariables.set('tokenAdmin', body.token);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/auth/login",
+            "description": "admin@goguia.test. Grava tokenAdmin. Rotas /admin/* exigem ADMIN; 403 não encerra a sessão.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@goguia.test\",\n  \"senha\": \"Senha@123\"\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Catálogo",
+      "description": "Público. Sem Bearer.\n\nGET /roteiros → 200\n{\n  \"items\": [{\n    \"id\": \"uuid\",\n    \"titulo\": \"Bike Tour do Eixo Monumental - Brasília\",\n    \"descricao\": \"...\",\n    \"categoria\": \"cultural\",\n    \"local\": \"Brasília / DF\",\n    \"distancia\": \"15 Km\",\n    \"duracao\": \"3 h\",\n    \"preco\": 180,\n    \"imageUrl\": \"https://...\",\n    \"notaMedia\": 5,\n    \"guia\": { \"id\": \"uuid\", \"nomeCompleto\": \"Pedro Marcos França\", \"fotoUrl\": null, \"notaMedia\": 5 }\n  }]\n}\n\nSó ativo=true. Ordem: destaque primeiro, depois notaMedia desc.\nQuery: q (titulo e local), categoria=lazer|cultural|rural, destaque=true.\n\nGET /roteiros/:id acrescenta capacidade, ativo, destaque, idioma, incluso[], politicaCancelamento[], paradas[{nome,lat,lng}], totalAvaliacoes. 404 se não existir ou estiver inativo.\n\nGET /roteiros/:id/avaliacoes → 200\n{\n  \"notaMedia\": 5,\n  \"total\": 2,\n  \"distribuicao\": [\n    { \"label\": \"Excelente\", \"quantidade\": 2 },\n    { \"label\": \"Muito bom\", \"quantidade\": 0 },\n    { \"label\": \"Razoável\", \"quantidade\": 0 },\n    { \"label\": \"Ruim\", \"quantidade\": 0 },\n    { \"label\": \"Horrível\", \"quantidade\": 0 }\n  ],\n  \"comentarios\": [\n    { \"id\": \"uuid\", \"autor\": \"Marina Alves\", \"texto\": \"...\", \"nota\": 5, \"criadoEm\": \"2026-03-02T15:30:00.000Z\" }\n  ]\n}\nSem avaliações: notaMedia 0, total 0, quantidades 0, comentarios []. Ordem dos labels é fixa. Comentários mais recentes primeiro.",
+      "item": [
+        {
+          "name": "Listar roteiros",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/roteiros",
+            "description": "Público. 200 { items }."
+          }
+        },
+        {
+          "name": "Buscar roteiros",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/roteiros?q=bras%C3%ADlia",
+            "description": "Público. q busca em titulo e local, sem diferenciar maiúsculas."
+          }
+        },
+        {
+          "name": "Filtrar por categoria",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/roteiros?categoria=cultural",
+            "description": "Público. categoria: lazer, cultural ou rural. Valor inválido → 400."
+          }
+        },
+        {
+          "name": "Destaques da home",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/roteiros?destaque=true",
+            "description": "Público. Só roteiros com destaque=true. No seed: Bike Tour e Um Dia no Rio."
+          }
+        },
+        {
+          "name": "Detalhe do roteiro",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/roteiros/{{roteiroId}}",
+            "description": "Público. 200 objeto completo, com paradas para o mapa (o FE chama o OSRM). 404 se inativo ou inexistente. O guia dono vê o seu, mesmo inativo, em GET /guia/roteiros/:id."
+          }
+        },
+        {
+          "name": "Avaliações do roteiro",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/roteiros/{{roteiroId}}/avaliacoes",
+            "description": "Público. O Bike Tour do seed tem 2 comentários nota 5. Não há endpoint para criar avaliação."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Favoritos",
+      "description": "Auth TURISTA (tokenTurista).\n\nGET /turista/favoritos → 200\n{ \"items\": [{ \"roteiroId\": \"uuid\", \"titulo\": \"...\", \"descricao\": \"...\", \"imageUrl\": \"https://...\" }] }\n\nPOST { \"roteiroId\" } → 201 com o item. 409 se já favoritado. 404 se o roteiro não existe ou está inativo.\nDELETE /turista/favoritos/:roteiroId → 204 mesmo se já não estava na lista.",
+      "item": [
+        {
+          "name": "Listar favoritos",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{tokenTurista}}" }],
+            "url": "{{baseUrl}}/turista/favoritos",
+            "description": "200 { items }."
+          }
+        },
+        {
+          "name": "Favoritar",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{tokenTurista}}" }
+            ],
+            "url": "{{baseUrl}}/turista/favoritos",
+            "description": "201 com o item. 409 se repetido. 404 roteiro inexistente ou inativo.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"roteiroId\": \"{{roteiroId}}\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Desfavoritar",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{tokenTurista}}" }],
+            "url": "{{baseUrl}}/turista/favoritos/{{roteiroId}}",
+            "description": "204 mesmo se o roteiro não estava nos favoritos."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Perfil",
+      "description": "Auth de qualquer tipo. Estas requests usam tokenTurista. Troque para tokenGuia se for o guia.\n\nGET /usuario/perfil → 200\n{\n  \"id\": \"uuid\",\n  \"nomeCompleto\": \"Turista Teste\",\n  \"email\": \"turista@goguia.test\",\n  \"fotoUrl\": null,\n  \"tipo\": \"TURISTA\",\n  \"telefone\": \"\",\n  \"endereco\": \"\",\n  \"cidade\": \"\",\n  \"estado\": \"\",\n  \"cep\": \"\"\n}\n\nPUT /usuario/perfil não altera senha nem tipo. 200 no mesmo formato. 409 se o e-mail é de outra conta. E-mail novo zera emailConfirmado e não derruba a sessão.\n\nPUT /usuario/senha → 204. Senha fraca → 400. Senha atual errada → 400 { \"message\": \"Senha atual incorreta\", \"code\": \"SENHA_ATUAL_INVALIDA\" }.\n\nDELETE /usuario/conta → 204 e invalida o token. Reservas futuras do turista vão para CANCELADA. Roteiros do guia ficam ativo=false.",
+      "item": [
+        {
+          "name": "Ver perfil",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{tokenTurista}}" }],
+            "url": "{{baseUrl}}/usuario/perfil",
+            "description": "Complementa GET /auth/me com telefone e endereço."
+          }
+        },
+        {
+          "name": "Atualizar perfil",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{tokenTurista}}" }
+            ],
+            "url": "{{baseUrl}}/usuario/perfil",
+            "description": "200 devolve o perfil. Campos omitidos permanecem. Não mude o e-mail do turista de teste se ainda for usar o seed.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nomeCompleto\": \"Turista Teste\",\n  \"email\": \"turista@goguia.test\",\n  \"telefone\": \"61999999999\",\n  \"endereco\": \"SQN 100\",\n  \"cidade\": \"Brasília\",\n  \"estado\": \"DF\",\n  \"cep\": \"70000-000\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Trocar senha",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{tokenTurista}}" }
+            ],
+            "url": "{{baseUrl}}/usuario/senha",
+            "description": "204. Senha mínima: 8 caracteres, 1 letra e 1 número. Reiniciar a API restaura Senha@123 nos usuários de teste. Recuperação por e-mail continua em POST /auth/redefinir-senha.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"senhaAtual\": \"Senha@123\",\n  \"novaSenha\": \"NovaSenha@123\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Encerrar conta",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{tokenTurista}}" }],
+            "url": "{{baseUrl}}/usuario/conta",
+            "description": "204. Apaga o acesso do token atual. Não rode com turista@goguia.test ou guia@goguia.test se ainda for usar o restante da coleção. O FE deve limpar o localStorage."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Reservas do turista",
+      "description": "Criar, listar e pagar: tokenTurista. GET /reservas/:id também aceita o guia do roteiro.\n\nStatus da reserva: AGUARDANDO_PAGAMENTO | PENDENTE | CONFIRMADA | RECUSADA | CONCLUIDA | CANCELADA.\n\nPOST /reservas → 201\n{\n  \"id\": \"uuid\",\n  \"status\": \"AGUARDANDO_PAGAMENTO\",\n  \"data\": \"2026-12-17\",\n  \"horario\": \"12:30\",\n  \"quantidade\": 2,\n  \"precoUnitario\": 180,\n  \"extras\": 0,\n  \"total\": 360,\n  \"roteiro\": { \"id\": \"uuid\", \"titulo\": \"...\", \"descricao\": \"...\", \"imageUrl\": \"https://...\", \"local\": \"Brasília / DF\" },\n  \"guia\": { \"id\": \"uuid\", \"nomeCompleto\": \"Pedro Marcos França\" }\n}\ntotal = precoUnitario * quantidade + extras. 400 data passada ou quantidade inválida. 404 roteiro inexistente. 409 roteiro inativo.\n\nGET /reservas/:id é o mesmo objeto, mais roteiro.incluso e roteiro.politicaCancelamento. 403 se não for participante.\n\nGET /turista/reservas → 200, data+horario crescente\n{ \"items\": [{ \"id\": \"uuid\", \"roteiro\": \"Bike Tour do Eixo Monumental - Brasília\", \"data\": \"2026-12-17\", \"horario\": \"12:30\", \"quantidade\": 2, \"status\": \"CONFIRMADA\", \"total\": 360 }] }\nAqui roteiro é o título (string). Query status opcional.\n\nPOST /reservas/:id/pagamento { \"metodo\": \"PIX\" } → 200\n{ \"metodo\": \"PIX\", \"status\": \"PENDENTE\", \"qrCode\": \"data:image/png;base64,...\", \"copiaECola\": \"00020126...\", \"expiraEm\": \"2026-09-28T14:30:00.000Z\" }\nstatus aqui é do pagamento: PENDENTE | PAGO | EXPIRADO.\nCARTAO → 501 { \"message\": \"Cartão indisponível no momento\", \"code\": \"CARTAO_INDISPONIVEL\" }.\n409 se a reserva não está AGUARDANDO_PAGAMENTO.\n\nGET /reservas/:id/pagamento: depois de ~5s o status do pagamento vira PAGO e o da reserva vira PENDENTE. Se passar expiraEm sem pagar, pagamento EXPIRADO e reserva CANCELADA. 404 se ainda não houve POST.",
+      "item": [
+        {
+          "name": "Criar reserva",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "if (body.id) pm.collectionVariables.set('reservaId', body.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{tokenTurista}}" }
+            ],
+            "url": "{{baseUrl}}/reservas",
+            "description": "201 AGUARDANDO_PAGAMENTO. Grava reservaId para o PIX. Quantidade entre 1 e a capacidade do roteiro (Bike Tour = 10).",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"roteiroId\": \"{{roteiroId}}\",\n  \"data\": \"2026-12-17\",\n  \"horario\": \"09:00\",\n  \"quantidade\": 2\n}"
+            }
+          }
+        },
+        {
+          "name": "Detalhe da reserva criada",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{tokenTurista}}" }],
+            "url": "{{baseUrl}}/reservas/{{reservaId}}",
+            "description": "Rode depois de Criar reserva. Inclui incluso e politicaCancelamento."
+          }
+        },
+        {
+          "name": "Detalhe da reserva confirmada (seed)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{tokenTurista}}" }],
+            "url": "{{baseUrl}}/reservas/{{reservaConfirmada}}",
+            "description": "Reserva seed já paga e confirmada, daqui a 14 dias. Não depende de criar uma nova."
+          }
+        },
+        {
+          "name": "Listar reservas",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{tokenTurista}}" }],
+            "url": "{{baseUrl}}/turista/reservas",
+            "description": "200 { items }. roteiro é string (título)."
+          }
+        },
+        {
+          "name": "Listar reservas por status",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{tokenTurista}}" }],
+            "url": "{{baseUrl}}/turista/reservas?status=CONFIRMADA",
+            "description": "status: AGUARDANDO_PAGAMENTO, PENDENTE, CONFIRMADA, RECUSADA, CONCLUIDA ou CANCELADA."
+          }
+        },
+        {
+          "name": "Pagar com PIX",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{tokenTurista}}" }
+            ],
+            "url": "{{baseUrl}}/reservas/{{reservaId}}/pagamento",
+            "description": "Só na reserva criada nesta coleção (AGUARDANDO_PAGAMENTO). As reservas seed já estão pagas e respondem 409. qrCode é data-URI PNG. status do body é o do pagamento, não o da reserva.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"metodo\": \"PIX\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Pagar com cartão",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{tokenTurista}}" }
+            ],
+            "url": "{{baseUrl}}/reservas/{{reservaId}}/pagamento",
+            "description": "501 CARTAO_INDISPONIVEL. O FE pode chamar antes ou no lugar do PIX; não confirma a reserva.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"metodo\": \"CARTAO\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Consultar pagamento",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{tokenTurista}}" }],
+            "url": "{{baseUrl}}/reservas/{{reservaId}}/pagamento",
+            "description": "Polling do botão de espera. Na primeira consulta após ~5s: pagamento PAGO e a reserva passa a PENDENTE. Confira em GET /reservas/{{reservaId}}. 404 se o POST PIX ainda não foi feito."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Painel do guia",
+      "description": "Auth GUIA (tokenGuia). O guia só vê os próprios roteiros e as reservas deles.\n\nGET /guia/roteiros?q= inclui inativos.\n{ \"items\": [{ \"id\", \"titulo\", \"descricao\", \"duracao\", \"capacidade\", \"preco\", \"imageUrl\", \"ativo\", \"categoria\", \"local\" }] }\n\nPOST /guia/roteiros JSON ou multipart (campo foto). 201 devolve o roteiro completo. ativo default true. guia é o usuário logado.\nCampos: titulo (2–160), descricao, duracao (ex. \"3 h\" ou \"1h 30\"), capacidade (inteiro >= 1), preco (> 0), categoria, local. Opcionais: distancia, foto (jpg/png/webp, 5MB), incluso, politicaCancelamento, paradas.\nNo JSON, incluso e politicaCancelamento são string[] e paradas é [{ nome, lat, lng }]. No multipart, mande esses três como string JSON.\n\nPUT /guia/roteiros/:id: campo omitido permanece. 404 se não for do guia.\nPATCH /guia/roteiros/:id/ativo { \"ativo\": false } → 200 { \"id\", \"ativo\" }.\n\nGET /guia/reservas?quando=proximas (default) ou historico.\nproximas: PENDENTE ou CONFIRMADA com data >= hoje.\nhistorico: CONCLUIDA, CANCELADA, RECUSADA ou data passada. Não existe /guia/historico.\n{ \"items\": [{\n  \"id\": \"uuid\",\n  \"quando\": \"2026-10-19T16:30:00-03:00\",\n  \"data\": \"2026-10-19\",\n  \"horario\": \"16:30\",\n  \"roteiro\": \"Bike Tour do Eixo Monumental - Brasília\",\n  \"roteiroId\": \"uuid\",\n  \"cliente\": { \"id\": \"uuid\", \"nomeCompleto\": \"Turista Teste\", \"fotoUrl\": null },\n  \"quantidade\": 1,\n  \"extras\": 0,\n  \"total\": 180,\n  \"status\": \"PENDENTE\"\n}] }\n\nGET /guia/reservas/:id acrescenta local, endereco, duracao, capacidade, idioma, descricao, incluso, politicaCancelamento. endereco é o ponto de encontro do roteiro.\n\nPOST .../aceitar e .../recusar só a partir de PENDENTE (já paga). 200 { \"id\", \"status\": \"CONFIRMADA\" | \"RECUSADA\" }. 409 se o status não permitir. Recusar marca o pagamento como estornado, sem banco.\n\nGET /guia/resumo-semana → 200 { \"totalReservas\": 0, \"faturamentoPrevisto\": 0 }\nSemana de segunda a domingo (America/Sao_Paulo). Conta PENDENTE + CONFIRMADA. faturamentoPrevisto é a soma de total.",
+      "item": [
+        {
+          "name": "Listar meus roteiros",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{tokenGuia}}" }],
+            "url": "{{baseUrl}}/guia/roteiros",
+            "description": "Inclui inativos. guia@ tem o Bike Tour."
+          }
+        },
+        {
+          "name": "Buscar meus roteiros",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{tokenGuia}}" }],
+            "url": "{{baseUrl}}/guia/roteiros?q=bike",
+            "description": "q filtra pelo título."
+          }
+        },
+        {
+          "name": "Detalhe do meu roteiro",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{tokenGuia}}" }],
+            "url": "{{baseUrl}}/guia/roteiros/{{roteiroId}}",
+            "description": "O dono vê o roteiro mesmo inativo. 404 se o id for de outro guia."
+          }
+        },
+        {
+          "name": "Criar roteiro (JSON)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{tokenGuia}}" }
+            ],
+            "url": "{{baseUrl}}/guia/roteiros",
+            "description": "201 roteiro completo. Sem foto, imageUrl fica null.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"titulo\": \"Catedral da Fé\",\n  \"descricao\": \"Visita guiada à catedral e ao entorno.\",\n  \"duracao\": \"1 h 30\",\n  \"capacidade\": 5,\n  \"preco\": 300,\n  \"categoria\": \"cultural\",\n  \"local\": \"Brasília / DF\",\n  \"distancia\": \"2 Km\",\n  \"incluso\": [\"Guia credenciado\", \"Material informativo digital\"],\n  \"politicaCancelamento\": [\n    \"Cancelamentos com até 24h de antecedência: reembolso total\",\n    \"Cancelamentos com menos de 24h: não há reembolso\"\n  ],\n  \"paradas\": [\n    { \"nome\": \"Partida\", \"lat\": -15.7984, \"lng\": -47.8756 }\n  ]\n}"
+            }
+          }
+        },
+        {
+          "name": "Criar roteiro (foto)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{tokenGuia}}" }],
+            "url": "{{baseUrl}}/guia/roteiros",
+            "description": "multipart/form-data. incluso, politicaCancelamento e paradas vão como texto JSON. foto é arquivo opcional.",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                { "key": "titulo", "value": "Caminhada no Parque da Cidade", "type": "text" },
+                { "key": "descricao", "value": "Passeio curto pelo Parque da Cidade.", "type": "text" },
+                { "key": "duracao", "value": "1h", "type": "text" },
+                { "key": "capacidade", "value": "8", "type": "text" },
+                { "key": "preco", "value": "80", "type": "text" },
+                { "key": "categoria", "value": "lazer", "type": "text" },
+                { "key": "local", "value": "Brasília / DF", "type": "text" },
+                { "key": "distancia", "value": "3 Km", "type": "text" },
+                { "key": "incluso", "value": "[\"Guia credenciado\"]", "type": "text" },
+                { "key": "politicaCancelamento", "value": "[\"Cancelamentos com até 24h de antecedência: reembolso total\"]", "type": "text" },
+                { "key": "paradas", "value": "[{\"nome\":\"Entrada\",\"lat\":-15.79,\"lng\":-47.90}]", "type": "text" },
+                { "key": "foto", "type": "file", "src": "" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Atualizar roteiro",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{tokenGuia}}" }
+            ],
+            "url": "{{baseUrl}}/guia/roteiros/{{roteiroId}}",
+            "description": "Patch semântico: o que não for enviado permanece. Este exemplo só altera o preço do Bike Tour. Reiniciar a API restaura o seed (preco 180).",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"preco\": 190\n}"
+            }
+          }
+        },
+        {
+          "name": "Ativar ou desativar roteiro",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{tokenGuia}}" }
+            ],
+            "url": "{{baseUrl}}/guia/roteiros/{{roteiroId}}/ativo",
+            "description": "200 { id, ativo }. Com false, o roteiro some do catálogo público. Reiniciar a API volta ativo=true.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"ativo\": true\n}"
+            }
+          }
+        },
+        {
+          "name": "Reservas próximas",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{tokenGuia}}" }],
+            "url": "{{baseUrl}}/guia/reservas?quando=proximas",
+            "description": "Default se omitir quando. PENDENTE e CONFIRMADA com data de hoje em diante."
+          }
+        },
+        {
+          "name": "Histórico de reservas",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{tokenGuia}}" }],
+            "url": "{{baseUrl}}/guia/reservas?quando=historico",
+            "description": "Mesmo recurso da listagem. quando=historico."
+          }
+        },
+        {
+          "name": "Detalhe da reserva pendente (seed)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{tokenGuia}}" }],
+            "url": "{{baseUrl}}/guia/reservas/{{reservaPendente}}",
+            "description": "Reserva seed PENDENTE, daqui a 21 dias, 1 pessoa, total 180."
+          }
+        },
+        {
+          "name": "Aceitar reserva",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{tokenGuia}}" }],
+            "url": "{{baseUrl}}/guia/reservas/{{reservaPendente}}/aceitar",
+            "description": "200 { id, status: CONFIRMADA }. Só rode um entre aceitar e recusar: os dois usam a reserva seed PENDENTE. 409 se ela já mudou de status. Reiniciar a API recria o seed."
+          }
+        },
+        {
+          "name": "Recusar reserva",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{tokenGuia}}" }],
+            "url": "{{baseUrl}}/guia/reservas/{{reservaPendente}}/recusar",
+            "description": "200 { id, status: RECUSADA }. Estorna o pagamento em memória (estornado=true), sem banco. Não rode se já aceitou a mesma reserva."
+          }
+        },
+        {
+          "name": "Resumo da semana",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{tokenGuia}}" }],
+            "url": "{{baseUrl}}/guia/resumo-semana",
+            "description": "200 { totalReservas, faturamentoPrevisto }. Soma PENDENTE + CONFIRMADA da semana corrente."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Chat",
+      "description": "Auth participante da reserva. Sem websocket. online é sempre false. O FE faz polling.\n\nPOST /conversas { \"reservaId\" } → 201 se criou, 200 se já existia.\n{\n  \"id\": \"uuid\",\n  \"reservaId\": \"uuid\",\n  \"roteiro\": { \"id\": \"uuid\", \"titulo\": \"...\", \"imageUrl\": \"https://...\" },\n  \"outroUsuario\": { \"id\": \"uuid\", \"nomeCompleto\": \"Pedro Marcos França\", \"fotoUrl\": null, \"online\": false },\n  \"ultimaMensagem\": null,\n  \"atualizadoEm\": \"2026-09-28T14:30:00.000Z\"\n}\n403 se o usuário não está na reserva. 404 reserva inexistente.\n\nGET /conversas: mais recente primeiro. ultimaMensagem: { texto, criadoEm, minha } ou null. minha=true quando o remetente é quem está logado.\n\nGET /conversas/:id/mensagens?depois=ISO → ordem cronológica crescente.\n{ \"items\": [{ \"id\": \"uuid\", \"texto\": \"Olá\", \"criadoEm\": \"...\", \"remetenteId\": \"uuid\", \"minha\": true }] }\n404 se a conversa é de outro usuário.\n\nPOST { \"texto\" } texto 1–2000, trim. 201 devolve a mensagem e atualiza ultimaMensagem.",
+      "item": [
+        {
+          "name": "Abrir conversa da reserva confirmada",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "if (body.id) pm.collectionVariables.set('conversaId', body.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{tokenTurista}}" }
+            ],
+            "url": "{{baseUrl}}/conversas",
+            "description": "Idempotente. Usa a reserva seed CONFIRMADA, então não depende do PIX. Grava conversaId. O guia pode abrir a mesma conversa com tokenGuia.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reservaId\": \"{{reservaConfirmada}}\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Listar conversas",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{tokenTurista}}" }],
+            "url": "{{baseUrl}}/conversas",
+            "description": "200 { items }, mais recente primeiro."
+          }
+        },
+        {
+          "name": "Listar mensagens",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{tokenTurista}}" }],
+            "url": "{{baseUrl}}/conversas/{{conversaId}}/mensagens",
+            "description": "Polling. Para incremental, acrescente ?depois=2026-09-28T13:45:00.000Z (ISO da última mensagem já renderizada)."
+          }
+        },
+        {
+          "name": "Enviar mensagem",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{tokenTurista}}" }
+            ],
+            "url": "{{baseUrl}}/conversas/{{conversaId}}/mensagens",
+            "description": "201 mensagem. Troque o Bearer para tokenGuia para responder como o guia.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"texto\": \"Te espero lá\"\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Carteiras",
+      "description": "Taxa da plataforma: 10% do total, na reserva CONCLUIDA.\n\nGET /turista/carteira (tokenTurista) → 200\n{\n  \"pagamentosRealizados\": 900,\n  \"creditosPromocionais\": 0,\n  \"cashback\": 0,\n  \"vouchers\": 0\n}\npagamentosRealizados soma o total das reservas do turista com pagamento PAGO e não estornado, fora de AGUARDANDO_PAGAMENTO. No seed são 900 (360 + 360 + 180). Cupom ainda não existe: créditos, cashback e vouchers voltam 0.\n\nGET /guia/carteira (tokenGuia) → 200\n{\n  \"saldoDisponivel\": 324,\n  \"saldoPendente\": 324,\n  \"ganhosMes\": 360,\n  \"acumulado\": 360,\n  \"taxasPlataforma\": 36,\n  \"liquido\": 324,\n  \"proximoPagamento\": \"2026-09-28\"\n}\nsaldoPendente = líquido (total - taxa) das CONFIRMADA.\nsaldoDisponivel = líquido das CONCLUIDA menos saques PENDENTE, PROCESSANDO e CONCLUIDO.\nganhosMes e acumulado são bruto. taxasPlataforma e liquido são do mês corrente.\nproximoPagamento é a próxima segunda-feira (YYYY-MM-DD), ou null se não há saldo disponível.\n\nPOST /guia/saques { \"valor\": 100, \"metodo\": \"PIX\" } → 201\n{ \"id\", \"valor\", \"metodo\": \"PIX\", \"status\": \"PENDENTE\", \"criadoEm\" }\nmetodo: PIX ou CONTA_BANCARIA. 400 SALDO_INSUFICIENTE se valor <= 0 ou maior que saldoDisponivel. Não pede chave PIX.\n\nGET /guia/saques → 200 { items }, mais recente primeiro. status: PENDENTE | PROCESSANDO | CONCLUIDO.",
+      "item": [
+        {
+          "name": "Carteira do turista",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{tokenTurista}}" }],
+            "url": "{{baseUrl}}/turista/carteira",
+            "description": "Próximas reservas continuam em GET /turista/reservas."
+          }
+        },
+        {
+          "name": "Carteira do guia",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{tokenGuia}}" }],
+            "url": "{{baseUrl}}/guia/carteira",
+            "description": "Números saem das reservas do Bike Tour. O seed tem uma CONCLUIDA de 2 pessoas (total 360) e uma CONFIRMADA de 2 pessoas (total 360)."
+          }
+        },
+        {
+          "name": "Solicitar saque",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{tokenGuia}}" }
+            ],
+            "url": "{{baseUrl}}/guia/saques",
+            "description": "201 status PENDENTE. valor não pode passar de saldoDisponivel. CONTA_BANCARIA também é aceito no lugar de PIX.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"valor\": 100,\n  \"metodo\": \"PIX\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Listar saques",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{tokenGuia}}" }],
+            "url": "{{baseUrl}}/guia/saques",
+            "description": "200 { items }, mais recente primeiro."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Agenda, cupom, perfil, avisos e admin",
+      "description": "Agenda padrão do roteiro sem configuração: dias 1 a 5 e horário 09:00. 17/12/2026 é quinta. Data passada, dia fora da semana ou bloqueado: 409 DATA_INDISPONIVEL. Horário fora da agenda ou sem vaga: 409 HORARIO_ESGOTADO. Cupom seed BEMVINDO10, 10% .",
+      "item": [
+        {
+          "name": "Disponibilidade do roteiro",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/roteiros/{{roteiroId}}/disponibilidade?data=2026-12-17",
+            "description": "Público. 200 { data, horarios: [{ horario, vagas }] }. Horário sem vaga sai da lista. 404 se o roteiro não existe ou está inativo."
+          }
+        },
+        {
+          "name": "Ver agenda do guia",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{tokenGuia}}" }],
+            "url": "{{baseUrl}}/guia/roteiros/{{roteiroId}}/agenda",
+            "description": "Dono do roteiro. 404 se o roteiro for de outro guia."
+          }
+        },
+        {
+          "name": "Salvar agenda",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{tokenGuia}}" }
+            ],
+            "url": "{{baseUrl}}/guia/roteiros/{{roteiroId}}/agenda",
+            "description": "400 se horários não estiverem em HH:mm, dia fora de 0–6, ou horarios vazio.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"diasSemana\": [1, 2, 3, 4, 5],\n  \"horarios\": [\"09:00\", \"14:00\"],\n  \"datasBloqueadas\": [\"2026-12-25\"]\n}"
+            }
+          }
+        },
+        {
+          "name": "Aplicar cupom",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{tokenTurista}}" }
+            ],
+            "url": "{{baseUrl}}/reservas/{{reservaId}}/cupom",
+            "description": "Só com a reserva em AGUARDANDO_PAGAMENTO. 400 CUPOM_INVALIDO. 409 se o status não permitir. BEMVINDO10 em 2×180 = desconto 36 e total 324.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"codigo\": \"BEMVINDO10\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Pagar com cupom e cashback",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{tokenTurista}}" }
+            ],
+            "url": "{{baseUrl}}/reservas/{{reservaId}}/pagamento",
+            "description": "Ordem: cupom, depois cashback limitado ao que resta. codigoCupom inválido responde 400 CUPOM_INVALIDO e não cria o pagamento. Cartão continua 501.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"metodo\": \"PIX\",\n  \"codigoCupom\": \"BEMVINDO10\",\n  \"usarCashback\": true\n}"
+            }
+          }
+        },
+        {
+          "name": "Perfil público do guia",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/guias/{{guiaId}}",
+            "description": "Público. 404 se não for guia aprovado. Rode Login guia antes para gravar guiaId. roteiros só com ativo = true."
+          }
+        },
+        {
+          "name": "Ver perfil do guia logado",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{tokenGuia}}" }],
+            "url": "{{baseUrl}}/guia/perfil",
+            "description": "Inclui email. O guia pendente também acessa, com aprovado false. roteiros inclui inativos."
+          }
+        },
+        {
+          "name": "Atualizar perfil do guia",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{tokenGuia}}" }
+            ],
+            "url": "{{baseUrl}}/guia/perfil",
+            "description": "Não altera nome, e-mail, tipo nem senha. bio até 500 caracteres.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"bio\": \"Guia de Brasília.\",\n  \"idiomas\": [\"português\", \"inglês\"],\n  \"cidade\": \"Brasília\",\n  \"estado\": \"DF\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Listar avisos",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{tokenTurista}}" }],
+            "url": "{{baseUrl}}/notificacoes",
+            "description": "Qualquer papel. Mais recente primeiro. tipo: PAGAMENTO_PAGO | RESERVA_CONFIRMADA | RESERVA_RECUSADA | RESERVA_CANCELADA | MENSAGEM."
+          }
+        },
+        {
+          "name": "Guias pendentes",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{tokenAdmin}}" }],
+            "url": "{{baseUrl}}/admin/guias?status=PENDENTE",
+            "description": "status opcional: PENDENTE, APROVADO ou RECUSADO. Sem query, devolve todos."
+          }
+        },
+        {
+          "name": "Listar cupons",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{tokenAdmin}}" }],
+            "url": "{{baseUrl}}/admin/cupons",
+            "description": "Mais recente primeiro. O seed inclui BEMVINDO10."
+          }
+        },
+        {
+          "name": "Listar roteiros (admin)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{tokenAdmin}}" }],
+            "url": "{{baseUrl}}/admin/roteiros",
+            "description": "Inclui inativos. denuncias é a contagem. destaque é o mesmo de GET /roteiros?destaque=true."
+          }
+        },
+        {
+          "name": "Listar denúncias",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{tokenAdmin}}" }],
+            "url": "{{baseUrl}}/admin/denuncias",
+            "description": "Mais recente primeiro."
+          }
+        },
+        {
+          "name": "Listar saques (admin)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{tokenAdmin}}" }],
+            "url": "{{baseUrl}}/admin/saques",
+            "description": "Mais recente primeiro. Cada item traz o saque e o guia."
+          }
+        }
+      ]
+    }
+  ]
+}

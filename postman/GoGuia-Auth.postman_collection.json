@@ -1,0 +1,297 @@
+{
+  "info": {
+    "name": "GoGuia API",
+    "description": "Base URL local: http://localhost:3001\n\nSenha de todos os seeds: Senha@123\n- turista@goguia.test (TURISTA)\n- guia@goguia.test (GUIA, Pedro Marcos França, dono do Bike Tour)\n- carlos.lima@goguia.test, mariana.reis@goguia.test, fernanda.souza@goguia.test, ricardo.silveira@goguia.test, antonio.bezerra@goguia.test\n\nBike Tour: a1000000-0000-4000-8000-000000000001",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:3001" },
+    { "key": "token", "value": "" },
+    { "key": "tokenGuia", "value": "" },
+    { "key": "emailToken", "value": "" },
+    { "key": "roteiroId", "value": "a1000000-0000-4000-8000-000000000001" },
+    { "key": "reservaId", "value": "" },
+    { "key": "conversaId", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "Cadastro JSON",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "url": "{{baseUrl}}/auth/cadastro",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"nomeCompleto\": \"Maria Silva\",\n  \"email\": \"maria@email.com\",\n  \"senha\": \"Senha@123\",\n  \"tipo\": \"TURISTA\"\n}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "if (pm.response.code === 201) {",
+              "  const body = pm.response.json();",
+              "  if (body.token) pm.collectionVariables.set('token', body.token);",
+              "}"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Cadastro com foto",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": "{{baseUrl}}/auth/cadastro",
+        "body": {
+          "mode": "formdata",
+          "formdata": [
+            { "key": "nomeCompleto", "value": "João Guia", "type": "text" },
+            { "key": "email", "value": "joao@email.com", "type": "text" },
+            { "key": "senha", "value": "Senha@123", "type": "text" },
+            { "key": "tipo", "value": "GUIA", "type": "text" },
+            { "key": "foto", "type": "file", "src": "" }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Login turista",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "url": "{{baseUrl}}/auth/login",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"turista@goguia.test\",\n  \"senha\": \"Senha@123\"\n}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const body = pm.response.json();",
+              "if (body.token) pm.collectionVariables.set('token', body.token);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Me",
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+        "url": "{{baseUrl}}/auth/me"
+      }
+    },
+    {
+      "name": "Logout",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+        "url": "{{baseUrl}}/auth/logout"
+      }
+    },
+    {
+      "name": "Esqueci senha",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "url": "{{baseUrl}}/auth/esqueci-senha",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"turista@goguia.test\"\n}"
+        }
+      }
+    },
+    {
+      "name": "Redefinir senha",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "url": "{{baseUrl}}/auth/redefinir-senha",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"token\": \"{{emailToken}}\",\n  \"novaSenha\": \"NovaSenha@123\"\n}"
+        }
+      }
+    },
+    {
+      "name": "Confirmar e-mail",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "url": "{{baseUrl}}/auth/confirmar-email",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"token\": \"{{emailToken}}\"\n}"
+        }
+      }
+    },
+    {
+      "name": "Domínio",
+      "item": [
+        {
+          "name": "Listar roteiros",
+          "request": { "method": "GET", "url": "{{baseUrl}}/roteiros?destaque=true" }
+        },
+        {
+          "name": "Detalhe do roteiro",
+          "request": { "method": "GET", "url": "{{baseUrl}}/roteiros/{{roteiroId}}" }
+        },
+        {
+          "name": "Avaliações",
+          "request": { "method": "GET", "url": "{{baseUrl}}/roteiros/{{roteiroId}}/avaliacoes" }
+        },
+        {
+          "name": "Login guia",
+          "event": [{
+            "listen": "test",
+            "script": {
+              "type": "text/javascript",
+              "exec": ["const body = pm.response.json();", "if (body.token) pm.collectionVariables.set('tokenGuia', body.token);"]
+            }
+          }],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/auth/login",
+            "body": { "mode": "raw", "raw": "{\n  \"email\": \"guia@goguia.test\",\n  \"senha\": \"Senha@123\"\n}" }
+          }
+        },
+        {
+          "name": "Favoritar",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": "{{baseUrl}}/turista/favoritos",
+            "body": { "mode": "raw", "raw": "{\n  \"roteiroId\": \"{{roteiroId}}\"\n}" }
+          }
+        },
+        {
+          "name": "Perfil",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{baseUrl}}/usuario/perfil"
+          }
+        },
+        {
+          "name": "Criar reserva",
+          "event": [{
+            "listen": "test",
+            "script": {
+              "type": "text/javascript",
+              "exec": ["const body = pm.response.json();", "if (body.id) pm.collectionVariables.set('reservaId', body.id);"]
+            }
+          }],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": "{{baseUrl}}/reservas",
+            "body": { "mode": "raw", "raw": "{\n  \"roteiroId\": \"{{roteiroId}}\",\n  \"data\": \"2026-12-17\",\n  \"horario\": \"09:00\",\n  \"quantidade\": 2\n}" }
+          }
+        },
+        {
+          "name": "Pagar com PIX",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": "{{baseUrl}}/reservas/{{reservaId}}/pagamento",
+            "body": { "mode": "raw", "raw": "{\n  \"metodo\": \"PIX\"\n}" }
+          }
+        },
+        {
+          "name": "Consultar pagamento",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{baseUrl}}/reservas/{{reservaId}}/pagamento"
+          }
+        },
+        {
+          "name": "Reservas do guia",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{tokenGuia}}" }],
+            "url": "{{baseUrl}}/guia/reservas?quando=proximas"
+          }
+        },
+        {
+          "name": "Aceitar reserva",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{tokenGuia}}" }],
+            "url": "{{baseUrl}}/guia/reservas/{{reservaId}}/aceitar"
+          }
+        },
+        {
+          "name": "Abrir conversa",
+          "event": [{
+            "listen": "test",
+            "script": {
+              "type": "text/javascript",
+              "exec": ["const body = pm.response.json();", "if (body.id) pm.collectionVariables.set('conversaId', body.id);"]
+            }
+          }],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": "{{baseUrl}}/conversas",
+            "body": { "mode": "raw", "raw": "{\n  \"reservaId\": \"{{reservaId}}\"\n}" }
+          }
+        },
+        {
+          "name": "Enviar mensagem",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": "{{baseUrl}}/conversas/{{conversaId}}/mensagens",
+            "body": { "mode": "raw", "raw": "{\n  \"texto\": \"Te espero lá\"\n}" }
+          }
+        },
+        {
+          "name": "Carteira do guia",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{tokenGuia}}" }],
+            "url": "{{baseUrl}}/guia/carteira"
+          }
+        },
+        {
+          "name": "Solicitar saque",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{tokenGuia}}" }
+            ],
+            "url": "{{baseUrl}}/guia/saques",
+            "body": { "mode": "raw", "raw": "{\n  \"valor\": 100,\n  \"metodo\": \"PIX\"\n}" }
+          }
+        }
+      ]
+    }
+  ]
+}

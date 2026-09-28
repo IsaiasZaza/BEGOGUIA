@@ -1,0 +1,229 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                   String      @id @default(uuid())
+  nomeCompleto         String
+  email                String      @unique
+  senhaHash            String
+  fotoUrl              String?
+  tipo                 String      @default("TURISTA")
+  emailConfirmado      Boolean     @default(false)
+  telefone             String      @default("")
+  endereco             String      @default("")
+  cidade               String      @default("")
+  estado               String      @default("")
+  cep                  String      @default("")
+  bio                  String      @default("")
+  idiomas              Json        @default("[]")
+  cashback             Float       @default(0)
+  statusAprovacao      String?
+  encerradaEm          DateTime?
+  tokensInvalidosAntes DateTime?
+  criadoEm             DateTime    @default(now())
+  atualizadoEm         DateTime    @updatedAt
+  tokens               AuthToken[]
+  roteiros             Roteiro[]
+  favoritos            Favorito[]
+  reservas             Reserva[]
+  conversasComoTurista Conversa[]  @relation("ConversaTurista")
+  conversasComoGuia    Conversa[]  @relation("ConversaGuia")
+  mensagens            Mensagem[]
+  saques               Saque[]
+  notificacoes         Notificacao[]
+  denuncias            Denuncia[]
+}
+
+model AuthToken {
+  id        String    @id @default(uuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tipo      String
+  tokenHash String    @unique
+  expiraEm  DateTime
+  usadoEm   DateTime?
+  criadoEm  DateTime  @default(now())
+
+  @@index([userId, tipo])
+}
+
+model Roteiro {
+  id                   String      @id @default(uuid())
+  guiaId               String
+  guia                 User        @relation(fields: [guiaId], references: [id], onDelete: Cascade)
+  titulo               String
+  descricao            String
+  categoria            String
+  local                String
+  distancia            String      @default("")
+  duracao              String
+  preco                Float
+  capacidade           Int
+  imageUrl             String?
+  ativo                Boolean     @default(true)
+  destaque             Boolean     @default(false)
+  idioma               String      @default("português")
+  pontoEncontro        String      @default("")
+  incluso              Json
+  politicaCancelamento Json
+  paradas              Json
+  diasSemana           Json?
+  horarios             Json?
+  datasBloqueadas      Json?
+  criadoEm             DateTime    @default(now())
+  atualizadoEm         DateTime    @updatedAt
+  avaliacoes           Avaliacao[]
+  favoritos            Favorito[]
+  reservas             Reserva[]
+  denuncias            Denuncia[]
+
+  @@index([guiaId])
+  @@index([ativo, destaque])
+}
+
+model Avaliacao {
+  id        String   @id @default(uuid())
+  roteiroId String
+  roteiro   Roteiro  @relation(fields: [roteiroId], references: [id], onDelete: Cascade)
+  autor     String
+  texto     String
+  nota      Int
+  criadoEm  DateTime @default(now())
+
+  @@index([roteiroId])
+}
+
+model Favorito {
+  id        String   @id @default(uuid())
+  turistaId String
+  roteiroId String
+  criadoEm  DateTime @default(now())
+  turista   User     @relation(fields: [turistaId], references: [id], onDelete: Cascade)
+  roteiro   Roteiro  @relation(fields: [roteiroId], references: [id], onDelete: Cascade)
+
+  @@unique([turistaId, roteiroId])
+}
+
+model Reserva {
+  id            String     @id @default(uuid())
+  turistaId     String
+  roteiroId     String
+  data          String
+  horario       String
+  quantidade    Int
+  precoUnitario Float
+  extras        Float      @default(0)
+  total         Float
+  status        String
+  cupomCodigo   String?
+  desconto      Float      @default(0)
+  cashbackAplicado Float   @default(0)
+  cashbackDevolvido Boolean @default(false)
+  cashbackCreditado Boolean @default(false)
+  criadoEm      DateTime   @default(now())
+  atualizadoEm  DateTime   @updatedAt
+  turista       User       @relation(fields: [turistaId], references: [id], onDelete: Cascade)
+  roteiro       Roteiro    @relation(fields: [roteiroId], references: [id], onDelete: Cascade)
+  pagamento     Pagamento?
+  conversa      Conversa?
+
+  @@index([turistaId, status])
+  @@index([roteiroId, status])
+}
+
+model Pagamento {
+  id         String    @id @default(uuid())
+  reservaId  String    @unique
+  reserva    Reserva   @relation(fields: [reservaId], references: [id], onDelete: Cascade)
+  metodo     String
+  status     String
+  qrCode     String
+  copiaECola String
+  expiraEm   DateTime
+  pagoEm     DateTime?
+  estornado  Boolean   @default(false)
+  criadoEm   DateTime  @default(now())
+}
+
+model Conversa {
+  id           String     @id @default(uuid())
+  reservaId    String     @unique
+  turistaId    String
+  guiaId       String
+  criadoEm     DateTime   @default(now())
+  atualizadoEm DateTime   @updatedAt
+  reserva      Reserva    @relation(fields: [reservaId], references: [id], onDelete: Cascade)
+  turista      User       @relation("ConversaTurista", fields: [turistaId], references: [id], onDelete: Cascade)
+  guia         User       @relation("ConversaGuia", fields: [guiaId], references: [id], onDelete: Cascade)
+  mensagens    Mensagem[]
+
+  @@index([turistaId, atualizadoEm])
+  @@index([guiaId, atualizadoEm])
+}
+
+model Mensagem {
+  id          String   @id @default(uuid())
+  conversaId  String
+  remetenteId String
+  texto       String
+  criadoEm    DateTime @default(now())
+  conversa    Conversa @relation(fields: [conversaId], references: [id], onDelete: Cascade)
+  remetente   User     @relation(fields: [remetenteId], references: [id], onDelete: Cascade)
+
+  @@index([conversaId, criadoEm])
+}
+
+model Saque {
+  id       String   @id @default(uuid())
+  guiaId   String
+  valor    Float
+  metodo   String
+  status   String
+  criadoEm DateTime @default(now())
+  guia     User     @relation(fields: [guiaId], references: [id], onDelete: Cascade)
+
+  @@index([guiaId, criadoEm])
+}
+
+model Cupom {
+  id        String   @id @default(uuid())
+  codigo    String   @unique
+  tipo      String
+  valor     Float
+  ativo     Boolean  @default(true)
+  expiraEm  String?
+  criadoEm  DateTime @default(now())
+}
+
+model Notificacao {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tipo      String
+  titulo    String
+  texto     String
+  lida      Boolean  @default(false)
+  href      String?
+  criadoEm  DateTime @default(now())
+
+  @@index([userId, criadoEm])
+}
+
+model Denuncia {
+  id        String   @id @default(uuid())
+  roteiroId String
+  roteiro   Roteiro  @relation(fields: [roteiroId], references: [id], onDelete: Cascade)
+  autorId   String
+  autor     User     @relation(fields: [autorId], references: [id], onDelete: Cascade)
+  motivo    String
+  criadoEm  DateTime @default(now())
+
+  @@index([roteiroId])
+  @@index([criadoEm])
+}
