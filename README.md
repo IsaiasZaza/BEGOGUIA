@@ -135,7 +135,7 @@ Taxa da plataforma: 10% do `total`, no líquido de `CONFIRMADA` e `CONCLUIDA`. P
 - `GET /health` é extra, fora do contrato de auth.
 - As respostas de auth não trazem `criadoEm` nem `atualizadoEm`, como nos exemplos da spec.
 - Erros incluem `code` além de `message` e `errors`.
-- Banco local é SQLite (`prisma/dev.db`). Para outro ambiente, troque `DATABASE_URL` e o provider do Prisma.
+- O banco é PostgreSQL na Neon. No servidor, `DATABASE_URL` precisa ser a URL `postgresql://...`. Se o host for o pooler (`-pooler`), acrescente `pgbouncer=true`.
 - `GET /guia/roteiros/:id` existe para o dono ver roteiro inativo.
 - O roteiro guarda `pontoEncontro`, usado como `endereco` no detalhe da reserva do guia. O JSON público do roteiro não inclui esse campo.
 - Não há endpoint para o turista concluir o passeio: `CONFIRMADA` com data/horário já ocorridos passa a `CONCLUIDA` na leitura.

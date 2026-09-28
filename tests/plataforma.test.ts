@@ -9,7 +9,7 @@ import { seedTestUsers } from '../src/lib/seed';
 import { clearAllData } from './db';
 
 if (!process.env.DATABASE_URL?.includes('test.db')) {
-  throw new Error('Recusando testes fora do banco de teste');
+  throw new Error('Recusando testes fora do banco de teste. Não rode a suíte no Postgres da Neon.');
 }
 
 const BIKE = 'a1000000-0000-4000-8000-000000000001';

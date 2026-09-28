@@ -16,8 +16,7 @@
     "db:seed": "tsx src/seed.ts",
     "postinstall": "prisma generate",
     "typecheck": "tsc --noEmit",
-    "pretest": "cross-env DATABASE_URL=file:./test.db prisma db push --skip-generate --accept-data-loss",
-    "test": "cross-env DATABASE_URL=file:./test.db JWT_SECRET=test-secret BCRYPT_ROUNDS=4 MAX_PHOTO_BYTES=2048 UPLOAD_DIR=uploads-test REQUIRE_EMAIL_CONFIRMATION=false API_PUBLIC_URL=http://localhost:3001 FRONTEND_URL=http://localhost:8080 node --test-concurrency=1 --import tsx --test tests/auth.test.ts tests/domain.test.ts tests/plataforma.test.ts"
+    "test": "cross-env JWT_SECRET=test-secret BCRYPT_ROUNDS=4 MAX_PHOTO_BYTES=2048 UPLOAD_DIR=uploads-test REQUIRE_EMAIL_CONFIRMATION=false API_PUBLIC_URL=http://localhost:3001 FRONTEND_URL=http://localhost:8080 node --test-concurrency=1 --import tsx --test tests/auth.test.ts tests/domain.test.ts tests/plataforma.test.ts"
   },
   "dependencies": {
     "@prisma/client": "^6.16.2",
